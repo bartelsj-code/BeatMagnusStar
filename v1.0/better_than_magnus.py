@@ -57,7 +57,7 @@ def find_path(user_username, dest_username, start_date):
         current = heapq.heappop(to_be_visited)
         # print(visited)
         if current.username in visited:
-            print("duplicat found!!")
+            print("duplicate found!!")
             break
 
         else:
