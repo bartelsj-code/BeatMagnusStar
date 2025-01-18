@@ -16,7 +16,6 @@ class PathFinder:
         self.start_date = start_date
         self.game_filter = game_filter
         self.all_nodes: dict[str, PlayerNode] = {}
-        
 
     def get_valid_neighbors(self, source_node: PlayerNode):
         '''goes through games played by source and finds all valid neighbors. 
@@ -36,13 +35,11 @@ class PathFinder:
                 if not opponent_username in self.all_nodes:
                     node = PlayerNode(opponent_username, source_node, game['url'], wins)
                     self.all_nodes[opponent_username] = node
+                elif source_node.winning != self.all_nodes[opponent_username].winning:
+                    print(f"connection found:{opponent_username}")
                 node = self.all_nodes[opponent_username]
-                if node.winning != source_node.winning:
-                 
-                    source_node.missing_link = game['url']
-                    return [node]
-                opponent_nodes.add(node)
                 node.update_ratings(opponent_json['rating'], game['time_class'])
+                opponent_nodes.add(node)
         return list(opponent_nodes)
     
     def get_heuristic(self, current_rating, goal_rating):
@@ -62,11 +59,23 @@ class PathFinder:
         node.heuristic = self.get_heuristic(node.g_rating, goal_rating)
         node.total_cost = node.steps_taken + node.heuristic
 
-    def reconstruct_path(self, node1: PlayerNode, node2: PlayerNode):
-        print("building path")
-        print(node1.missing_link)
+    def reconstruct_path(self, node1, node2):
+        count = 0
+        for node in [node1, node2]:
+            curr = node
+            while curr != None:
+                print(curr)
+                print(curr.parent_game)
+                # time.sleep(0.1)
+                # try:
+                #     webbrowser.open(curr.parent_game, new=2)
+                # except:
+                #     pass
+                curr = curr.parent
+                count += 1
+                if count >= 20:
+                    break
 
-       
     def account_closed(self, node):
         info = get_player_info(node.username)
         return info['status'] in ["closed:fair_play_violations","closed"]
@@ -88,22 +97,25 @@ class PathFinder:
         self.assign_cost(self.dest_node)
 
         multi_queue = MultiQueue()
+
+        # multi_set = MultiSet()
+
         multi_queue.push(self.user_node)
         multi_queue.push(self.dest_node)
 
         while multi_queue:
             current_node: PlayerNode = multi_queue.pop()
             current_node.visited = True
+            # print(current_node)
+            # print(multi_set)
             print(f"{current_node.chain_rep()}")
             
             if self.account_closed(current_node):
                 print("\t^ cheater or speedrun account (ignored)")
                 continue
             
-            neighbor_nodes = self.get_valid_neighbors(current_node)
-            if neighbor_nodes[0].winning != current_node.winning:
-                    return self.reconstruct_path(current_node, neighbor_node)
-            for neighbor_node in neighbor_nodes:
+            neighbor_nodes: list[PlayerNode] = self.get_valid_neighbors(current_node)
+            for neighbor_node in neighbor_nodes:      
                 neighbor_node.steps_taken = current_node.steps_taken + 1
                 self.assign_cost(neighbor_node)
                 if not neighbor_node.visited:

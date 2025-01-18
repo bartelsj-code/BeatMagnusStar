@@ -7,16 +7,16 @@ class MultiQueue:
         self.loser_queue = []
 
     def pop(self):
-        if not self:
-            print("tried to pop from empty queue")
+        self.total_length -= 1
         if not self.winner_queue:
             return heapq.heappop(self.loser_queue)
         if not self.loser_queue or self.winner_queue[0] < self.loser_queue[0]:
             return heapq.heappop(self.winner_queue)
         return heapq.heappop(self.loser_queue)
     
-    def push(self, node, is_winner = True):
-        if is_winner:
+    def push(self, node):
+        self.total_length += 1
+        if node.winning:
             heapq.heappush(self.winner_queue, node)
         else:
             heapq.heappush(self.loser_queue, node)
@@ -24,5 +24,11 @@ class MultiQueue:
     def __bool__(self):
         return self.total_length > 0
     
+    def get_queue_str(self):
+        w = [] if not self.winner_queue else self.winner_queue[0].total_cost
+        l = [] if not self.loser_queue else self.loser_queue[0].total_cost
+        return w,l
+    
     def __repr__(self):
-        return f"MultiQueue\n<win: {self.winner_queue}>\n<los: {self.loser_queue}>"
+        w, l = self.get_queue_str()
+        return f"MultiQueue\n\t<win: {w:.3f}>\n\t<los: {l:.3f}>"
