@@ -2,9 +2,9 @@
 class PlayerNode:
     username: str
     ratings: float
-    parent_game: str
+    game: str
     
-    def __init__(self, username, parent, parent_game, winning):
+    def __init__(self, username, parent, game, winning):
         self.visited = False
         self.winning = winning
         self.username = username
@@ -22,10 +22,10 @@ class PlayerNode:
                         "daily": 0
                         }
         self.lock = False
-        self.parent_game = parent_game
+        self.game = game
         self.parent = parent
         self.missing_link = None
-        self.steps_taken: int = 0
+        self.steps_taken = float('inf')
         self.heuristic: float = 0
         self.total_cost = float('inf')
         
@@ -59,9 +59,9 @@ class PlayerNode:
             self.update_general()
 
     def __lt__(self, other):
-        return self.total_cost < other.total_cost
+        return self.total_cost <= other.total_cost
     
-    def get_rating_string(self, short):
+    def get_rating_string(self):
         return f"{self.g_rating:.1f}"
     
     def assign_parent(self, node):
@@ -82,9 +82,9 @@ class PlayerNode:
         return f"{self.username} > {self.parent.chain_rep()}"
  
     def __repr__(self):
-        return (f"<{self.username}, "  
-                f"{self.get_rating_string(short = True)}, "
-                f"{'winning' if self.winning else 'losing'}, "
-                f"{self.total_cost:.3f}, "
-                f"{self.get_parent()}>")
+        return (
+                f"<{self.username}, "  
+                f"{self.get_rating_string()}, "
+                f"{'w' if self.winning else 'l'}>"
+                )
     

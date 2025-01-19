@@ -25,10 +25,22 @@ class MultiQueue:
         return self.total_length > 0
     
     def get_queue_str(self):
-        w = [] if not self.winner_queue else self.winner_queue[0].total_cost
-        l = [] if not self.loser_queue else self.loser_queue[0].total_cost
+        w = [] if not self.winner_queue else f"{self.winner_queue[0].username}  {self.winner_queue[0].total_cost:.3f}"
+        l = [] if not self.loser_queue else f"{self.loser_queue[0].username}  {self.loser_queue[0].total_cost:.3f}"
         return w,l
     
     def __repr__(self):
         w, l = self.get_queue_str()
-        return f"MultiQueue\n\t<win: {w:.3f}>\n\t<los: {l:.3f}>"
+        return f"〈 <win: {w}> Queue <los: {l}> 〉"
+        return f"{self.total_length}"
+        
+        print(w, l)
+        
+    
+    def __iter__(self):
+        return iter(self.winner_queue + self.loser_queue)
+    
+    def clean(self):
+        
+        heapq.heapify(self.winner_queue)
+        heapq.heapify(self.loser_queue)
