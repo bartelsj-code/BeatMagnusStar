@@ -64,17 +64,11 @@ class PathFinder:
         node.total_cost = node.steps_taken + node.heuristic
 
     def reconstruct_path(self, node1: PlayerNode, node2: PlayerNode):
-        pass
-        # print(node1)
-        # print(node2)
-        # print("building path")
-        
         n1 = node1  #missing link
         n2 = node2  #must pass down, then recieve
 
         part1 = []
         while n1 != None:
-
             part1.append(n1)
             n1 = n1.parent
 
@@ -84,13 +78,9 @@ class PathFinder:
             part2.append(n2)
             n2 = n2.parent
 
-        print(part1)
-        print(part2)
-
         for i in range(len(part2)-1, 0, -1):
             part2[i].game = part2[i-1].game
         part2[0].game = node1.missing_link
-
 
         if node2.winning:
             path = part2[::-1] + part1
@@ -161,7 +151,7 @@ class PathFinder:
     
         multi_queue = MultiQueue()
         multi_queue.push(self.user_node)
-        # multi_queue.push(self.dest_node)
+        multi_queue.push(self.dest_node)
 
         self.mq = multi_queue
 
@@ -183,7 +173,6 @@ class PathFinder:
             neighbor_nodes = self.get_valid_neighbors(current_node)
             
             if len(neighbor_nodes) == 0:
-    
                 continue
             if neighbor_nodes[0].winning != current_node.winning:
                 return self.reconstruct_path(current_node, neighbor_nodes[0])
@@ -194,7 +183,6 @@ class PathFinder:
                     multi_queue.push(neighbor_node)
                     neighbor_node.visited = True
 
-            
             for node in multi_queue:
                 self.assign_cost(node)
             multi_queue.clean()
