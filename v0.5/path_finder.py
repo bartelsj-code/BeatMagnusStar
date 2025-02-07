@@ -65,7 +65,7 @@ class PathFinder:
         self.all_nodes[username] = node
         return node
     
-    def generate_dest_set(self, node, explore_limit):
+    # def generate_dest_set(self, node, explore_limit):
         raise Exception("reminder you need to eliminate cheaters")
             
         
