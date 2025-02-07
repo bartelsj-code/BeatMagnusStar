@@ -76,42 +76,6 @@ class DataAccess:
         c.execute(query, tuple(params))
         return c.fetchall()
    
-    # def pull_games_since_date(self, username, start_date):
-    #     player_id = self.get_player_id(username)
-    #     c = self.conn.cursor()
-    #     c.execute("""
-    #         SELECT g.*
-    #         FROM games g
-    #         Join player_games pg ON g.id = pg.game_id
-    #         WHERE pg.player_id = ? AND (g.year > ? OR (g.year = ? AND g.month >= ?))
-    #     """, (player_id, start_date[0], start_date[0], start_date[1]))
-    #     return c.fetchall()
-    
-    # def pull_wins_since_date(self, username, start_date):
-    #     player_id = self.get_player_id(username)
-    #     c = self.conn.cursor()
-    #     c.execute("""
-    #         SELECT g.*
-    #         FROM games g
-    #         Join player_games pg ON g.id = pg.game_id
-    #         WHERE pg.player_id = ? AND (g.year > ? OR (g.year = ? AND g.month >= ?)) 
-    #         AND ((g.white_username = ? AND g.white_result = "win") OR (g.black_username = ? AND g.black_result = "win"))
-    #     """, (player_id, start_date[0], start_date[0], start_date[1], username, username))
-    #     return c.fetchall()
-    
-    # def pull_losses_since_date(self, username, start_date):
-    #     player_id = self.get_player_id(username)
-    #     c = self.conn.cursor()
-    #     c.execute("""
-    #         SELECT g.*
-    #         FROM games g
-    #         Join player_games pg ON g.id = pg.game_id
-    #         WHERE pg.player_id = ? AND (g.year > ? OR (g.year = ? AND g.month >= ?))
-    #     """, (player_id, start_date[0], start_date[0], start_date[1]))
-    #     return c.fetchall()
-    
-
-
     def get_player_id(self, username):
         # if exists, get ID, otherwise first add, then get ID
         c = self.conn.cursor()
