@@ -1,5 +1,6 @@
 class Game:
     def __init__(self, tup):
+        print(tup)
         self.white_username = tup[1]
         self.white_rating = tup[2]
         self.white_result = tup[3]
@@ -7,4 +8,6 @@ class Game:
         self.black_rating = tup[5]
         self.black_result = tup[6]
         self.time_control = tup[7]
-        self.url = tup[8]
+        self.year = tup[8]
+        self.month = tup[9]
+        self.url = tup[10]

@@ -1,5 +1,5 @@
 GAME_ATTRIBUTES = {"rules": ["chess"], "rated": [True], "time_class": ["blitz", "rapid", "bullet"]}
-START_YEAR, START_MONTH = 2025, 1
+START_YEAR, START_MONTH = 2025, 2
 USER = "bartelsj"
 DESTINATION = "magnuscarlsen"
 EXPLORATION_LIMIT = 10000

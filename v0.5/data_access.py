@@ -14,73 +14,34 @@ class DataAccess:
         if self.player_update_needed(username):
             self.renew_closed_status_api(username)
 
-    def subtract_month(self, date):
-        year = date[0]
-        month = date[1]
-        month -= 1
-        if month < 1:
-            month += 12
-            year -= 1
-        return (year, month)
-
-    def get_dates(self, requested, first_possible, done):
-        to_be_searched = []
-        start_date = max(requested, first_possible)
-        if done[0] == None:
-            tod = datetime.today()
-            done = (tod.year, tod.month)
-        else:
-            done = self.subtract_month(done)
-
-        curr = done
-        while curr >= start_date:
-            if curr <= done:
-                to_be_searched.append(curr)
-            curr = self.subtract_month(curr)
-       
-        return to_be_searched
-
-    def get_games_since_date(self, username, start_date):
+    def get_matching_games(self, username, start_date, is_winning=None):
         self.prep_games_since_date(username, start_date)
-        tups =  self.pull_games_since_date(username, start_date)
+        tups =  self.pull_games(username=username, start_date=start_date, is_winning=is_winning)
         return [tup_to_game(tup) for tup in tups]
-        
+    
+    
+    #################################### api stuff ####################################
+
     def prep_games_since_date(self, username, start_date):
         games = []
-
         self.prepare_player_data(username)
         user_id = self.get_player_id(username)
         records_date = self.get_records_date(username)
         first_date = self.get_first_date(username)
-
-        # record requests needed from (max(start_date, first_date)) to records_date
         dates_to_search = self.get_dates(start_date, first_date, records_date)
 
         if len(dates_to_search) > 0:
             for date in dates_to_search:
-
                 game_jsons = api_requests.get_month_games(username, date)
- 
                 tups = [game_json_to_tup(gj, date) for gj in game_jsons]
                 self.insert_games(tups, user_id)
             searched_till = dates_to_search[-1]
             self.upsert_player(username, records_year=searched_till[0], records_month=searched_till[1])
 
-        
-
-
-        
-
-
-
-
-    #################################### api stuff ####################################
-
     def renew_closed_status_api(self, username):
         self.upsert_player(username, 
                            closed = api_requests.get_player_closed(username)
                            )
-
 
     def pull_player_data_from_api(self, username):
         year, month = api_requests.get_player_start_date(username)
@@ -93,17 +54,63 @@ class DataAccess:
 
     ###################################### SQL stuff ###################################
 
-   
-    def pull_games_since_date(self, username, start_date):
-        player_id = self.get_player_id(username)
+    def pull_games(self, *, username = None, start_date = None, is_winning = None):
+        query_opener = """SELECT g.* FROM games g Join player_games pg ON g.id = pg.game_id WHERE """
+        query = []
+        params = []
+        if username is not None:
+            player_id = self.get_player_id(username)
+            query.append("""pg.player_id = ?""")
+            params.append(player_id)
+        if start_date is not None:
+            query.append("""(g.year > ? OR (g.year = ? AND g.month >= ?))""")
+            params += [start_date[0], start_date[0], start_date[1]]
+        if is_winning is not None:
+            if is_winning:
+                query.append("""((g.white_username = ? AND g.white_result = "win") OR (g.black_username = ? AND g.black_result = "win"))""")
+            else:
+                query.append("""((g.white_username = ? AND g.black_result = "win") OR (g.black_username = ? AND g.white_result = "win"))""")
+            params += [username, username]
+        query = query_opener + """ AND """.join(query)
         c = self.conn.cursor()
-        c.execute("""
-            SELECT g.*
-            FROM games g
-            Join player_games pg ON g.id = pg.game_id
-            WHERE pg.player_id = ? AND (g.year > ? OR (g.year = ? AND g.month >= ?))
-        """, (player_id, start_date[0], start_date[0], start_date[1]))
+        c.execute(query, tuple(params))
         return c.fetchall()
+   
+    # def pull_games_since_date(self, username, start_date):
+    #     player_id = self.get_player_id(username)
+    #     c = self.conn.cursor()
+    #     c.execute("""
+    #         SELECT g.*
+    #         FROM games g
+    #         Join player_games pg ON g.id = pg.game_id
+    #         WHERE pg.player_id = ? AND (g.year > ? OR (g.year = ? AND g.month >= ?))
+    #     """, (player_id, start_date[0], start_date[0], start_date[1]))
+    #     return c.fetchall()
+    
+    # def pull_wins_since_date(self, username, start_date):
+    #     player_id = self.get_player_id(username)
+    #     c = self.conn.cursor()
+    #     c.execute("""
+    #         SELECT g.*
+    #         FROM games g
+    #         Join player_games pg ON g.id = pg.game_id
+    #         WHERE pg.player_id = ? AND (g.year > ? OR (g.year = ? AND g.month >= ?)) 
+    #         AND ((g.white_username = ? AND g.white_result = "win") OR (g.black_username = ? AND g.black_result = "win"))
+    #     """, (player_id, start_date[0], start_date[0], start_date[1], username, username))
+    #     return c.fetchall()
+    
+    # def pull_losses_since_date(self, username, start_date):
+    #     player_id = self.get_player_id(username)
+    #     c = self.conn.cursor()
+    #     c.execute("""
+    #         SELECT g.*
+    #         FROM games g
+    #         Join player_games pg ON g.id = pg.game_id
+    #         WHERE pg.player_id = ? AND (g.year > ? OR (g.year = ? AND g.month >= ?))
+    #     """, (player_id, start_date[0], start_date[0], start_date[1]))
+    #     return c.fetchall()
+    
+
 
     def get_player_id(self, username):
         # if exists, get ID, otherwise first add, then get ID
@@ -275,5 +282,33 @@ class DataAccess:
 
     def __del__(self):
         self.close()
+
+    ####################################  Dates stuff #############################
+
+    def subtract_month(self, date):
+        year = date[0]
+        month = date[1]
+        month -= 1
+        if month < 1:
+            month += 12
+            year -= 1
+        return (year, month)
+
+    def get_dates(self, requested, first_possible, done):
+        to_be_searched = []
+        start_date = max(requested, first_possible)
+        if done[0] == None:
+            tod = datetime.today()
+            done = (tod.year, tod.month)
+        else:
+            done = self.subtract_month(done)
+
+        curr = done
+        while curr >= start_date:
+            if curr <= done:
+                to_be_searched.append(curr)
+            curr = self.subtract_month(curr)
+       
+        return to_be_searched
 
 
