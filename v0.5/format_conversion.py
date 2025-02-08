@@ -1,7 +1,8 @@
 from game import Game
 
-
 def game_json_to_tup(game_json, date):
+    rules = game_json["rules"]
+    is_rated = game_json["rated"]
 
     white_json = game_json["white"]
     w_username = white_json["username"].lower()
@@ -18,6 +19,8 @@ def game_json_to_tup(game_json, date):
     url = game_json["url"]
 
     tup = (
+        rules,
+        is_rated,
         w_username,
         w_rating,
         w_result,

@@ -1,0 +1,5 @@
+2. Add database refreshing and update check
+.
+.
+.
+999. Make flask app and website ya dufus!

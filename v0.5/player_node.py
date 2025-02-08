@@ -5,7 +5,7 @@ class PlayerNode:
     ratings: float
     game: str
     
-    def __init__(self, username, parent, game, winning):
+    def __init__(self, username, parent, game_url, winning):
         self.visited = False
         self.winning = winning
         self.username = username
@@ -22,7 +22,7 @@ class PlayerNode:
                         "rapid": 0, 
                         "daily": 0
                         }
-        self.game = game
+        self.game_url = game_url
         self.parent: PlayerNode = parent
         self.missing_link = None
         self.steps_taken = float('inf')
@@ -76,7 +76,7 @@ class PlayerNode:
                 f"{self.total_cost:.1f}, "
                 f"{self.username}, "  
                 f"{'W' if self.winning else 'L'}, "
-                f"{self.comp_rating}"
+                f"{self.comp_rating:.2f}"
                 
                 ">"
                 

@@ -9,52 +9,26 @@ class DataAccess:
         self.conn = sqlite3.connect("data.db")
         self.set_up_database()
         self.check_frequency = 24 # hours
+        self.request_counter = 0
 
     def prepare_player_data(self, username):
         if self.player_update_needed(username):
             self.renew_closed_status_api(username)
 
-    def get_matching_games(self, username, start_date, is_winning=None):
+    def get_matching_games(self, *, username, start_date, is_winning=None, filter=None, loser=None):
         self.prep_games_since_date(username, start_date)
-        tups =  self.pull_games(username=username, start_date=start_date, is_winning=is_winning)
+        tups =  self.pull_games(username=username, start_date=start_date, is_winning=is_winning, filter=filter, loser_username=loser)
         return [tup_to_game(tup) for tup in tups]
-    
-    
-    #################################### api stuff ####################################
-
-    def prep_games_since_date(self, username, start_date):
-        games = []
-        self.prepare_player_data(username)
-        user_id = self.get_player_id(username)
-        records_date = self.get_records_date(username)
-        first_date = self.get_first_date(username)
-        dates_to_search = self.get_dates(start_date, first_date, records_date)
-
-        if len(dates_to_search) > 0:
-            for date in dates_to_search:
-                game_jsons = api_requests.get_month_games(username, date)
-                tups = [game_json_to_tup(gj, date) for gj in game_jsons]
-                self.insert_games(tups, user_id)
-            searched_till = dates_to_search[-1]
-            self.upsert_player(username, records_year=searched_till[0], records_month=searched_till[1])
-
-    def renew_closed_status_api(self, username):
-        self.upsert_player(username, 
-                           closed = api_requests.get_player_closed(username)
-                           )
-
-    def pull_player_data_from_api(self, username):
-        year, month = api_requests.get_player_start_date(username)
-        closed = api_requests.get_player_closed(username)
-        self.upsert_player(username, 
-                           first_year= int(year), 
-                           first_month= int(month), 
-                           closed= closed
-                           )
-
+            
     ###################################### SQL stuff ###################################
 
-    def pull_games(self, *, username = None, start_date = None, is_winning = None):
+    def is_player_closed(self, username):
+        c = self.conn.cursor()
+        c.execute("SELECT closed FROM players WHERE username = ? LIMIT 1", (username,))
+        result = c.fetchone()
+        return result[0]
+
+    def pull_games(self, *, username = None, start_date = None, is_winning = None, filter=None, loser_username = None):
         query_opener = """SELECT g.* FROM games g Join player_games pg ON g.id = pg.game_id WHERE """
         query = []
         params = []
@@ -71,6 +45,16 @@ class DataAccess:
             else:
                 query.append("""((g.white_username = ? AND g.black_result = "win") OR (g.black_username = ? AND g.white_result = "win"))""")
             params += [username, username]
+        if filter is not None:
+            for item in filter:
+                query.append(f"""(g.{item} IN ({(" ?,"*len(filter[item])).strip(",")}))""")
+                params += filter[item]
+        if loser_username is not None:
+            query.append("""((g.white_username = ? AND g.black_result = "win") OR (g.black_username = ? AND g.white_result = "win"))""")
+            params += [loser_username, loser_username]
+
+
+        
         query = query_opener + """ AND """.join(query)
         c = self.conn.cursor()
         c.execute(query, tuple(params))
@@ -79,37 +63,37 @@ class DataAccess:
     def get_player_id(self, username):
         # if exists, get ID, otherwise first add, then get ID
         c = self.conn.cursor()
-        c.execute("SELECT id FROM players WHERE username = ?", (username,))
+        c.execute("SELECT id FROM players WHERE username = ? LIMIT 1", (username,))
         result = c.fetchone()
         if result:
             return result[0]
         
         self.upsert_player(username)
-        c.execute("SELECT id FROM players WHERE username = ?", (username,))
+        c.execute("SELECT id FROM players WHERE username = ? LIMIT 1", (username,))
         return c.fetchone()[0]
 
     def get_first_date(self, username):
         c = self.conn.cursor()
-        c.execute("SELECT first_year, first_month FROM players WHERE username = ?", (username,))
+        c.execute("SELECT first_year, first_month FROM players WHERE username = ? LIMIT 1", (username,))
         result = c.fetchone()
         return tuple(result)
 
 
     def get_records_date(self, username):
         c = self.conn.cursor()
-        c.execute("SELECT records_year, records_month FROM players WHERE username = ?", (username,))
+        c.execute("SELECT records_year, records_month FROM players WHERE username = ? LIMIT 1", (username,))
         result = c.fetchone()
         return tuple(result)
 
 
     def reset_updated(self, username):
         c = self.conn.cursor()
-        c.execute("UPDATE players SET updated = CURRENT_TIMESTAMP WHERE username = ?", (username,))
+        c.execute("UPDATE players SET updated = CURRENT_TIMESTAMP WHERE username = ? LIMIT 1", (username,))
         self.conn.commit()
 
     def player_update_needed(self, username):
         c = self.conn.cursor()
-        c.execute("SELECT updated FROM players WHERE username = ?", (username,))
+        c.execute("SELECT updated FROM players WHERE username = ? LIMIT 1", (username,))
         result = c.fetchone()
         if result is None:
             #i.e. player not yet exists
@@ -124,7 +108,7 @@ class DataAccess:
     
     def get_game_id(self, url):
         c = self.conn.cursor()
-        c.execute("SELECT id FROM games WHERE url = ?", (url,))
+        c.execute("SELECT id FROM games WHERE url = ? LIMIT 1", (url,))
         return c.fetchone()[0]
 
 
@@ -133,13 +117,15 @@ class DataAccess:
         c.executescript("""
             CREATE TABLE IF NOT EXISTS games (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                rules TEXT,
+                rated BOOL,
                 white_username TEXT,
                 white_rating INTEGER,
                 white_result TEXT,
                 black_username TEXT,
                 black_rating INTEGER,
                 black_result TEXT,
-                time_control TEXT,
+                time_class TEXT,
                 year INTEGER,
                 month INTEGER,
                 url TEXT UNIQUE
@@ -172,8 +158,8 @@ class DataAccess:
     def insert_games(self, tups, user_id):
         c = self.conn.cursor()
         c.executemany("""
-        INSERT OR IGNORE INTO games (white_username, white_rating, white_result, black_username, black_rating, black_result, time_control, year, month, url)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT OR IGNORE INTO games (rules, rated, white_username, white_rating, white_result, black_username, black_rating, black_result, time_class, year, month, url)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                       """, tups)
         
 
@@ -198,7 +184,7 @@ class DataAccess:
         try:
             c = self.conn.cursor()
 
-            c.execute("SELECT id FROM players WHERE username = ?", (username,))
+            c.execute("SELECT id FROM players WHERE username = ? LIMIT 1", (username,))
             id = c.fetchone()
 
             if id:
@@ -247,7 +233,44 @@ class DataAccess:
     def __del__(self):
         self.close()
 
+    #################################### api stuff ####################################
+
+    def prep_games_since_date(self, username, start_date):
+        self.request_counter += 1
+        games = []
+        self.prepare_player_data(username)
+        user_id = self.get_player_id(username)
+        records_date = self.get_records_date(username)
+        first_date = self.get_first_date(username)
+        dates_to_search = self.get_dates(start_date, first_date, records_date)
+
+        if len(dates_to_search) > 0:
+            for date in dates_to_search:
+                game_jsons = api_requests.get_month_games(username, date)
+                if game_jsons == None:
+                    continue
+                tups = [game_json_to_tup(gj, date) for gj in game_jsons]
+                self.insert_games(tups, user_id)
+            searched_till = dates_to_search[-1]
+            self.upsert_player(username, records_year=searched_till[0], records_month=searched_till[1])
+
+    def renew_closed_status_api(self, username):
+        self.upsert_player(username, 
+                           closed = api_requests.get_player_closed(username)
+                           )
+
+    def pull_player_data_from_api(self, username):
+        year, month = api_requests.get_player_start_date(username)
+        closed = api_requests.get_player_closed(username)
+        self.upsert_player(username, 
+                           first_year= int(year), 
+                           first_month= int(month), 
+                           closed= closed
+                           )
+
+
     ####################################  Dates stuff #############################
+
 
     def subtract_month(self, date):
         year = date[0]

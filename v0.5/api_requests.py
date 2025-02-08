@@ -7,7 +7,7 @@ def make_api_request(url):
         data = response.json()
         return data
     else:
-        print(f"\tFailed to fetch data. Status code: {response.status_code}")
+        print(f"Failed to fetch data. Status code: {response.status_code}")
         print(f"\tRequest: {url}")
         return None
 
@@ -15,7 +15,10 @@ def get_month_games(username, date):
     year = date[0]
     month = str(date[1]).zfill(2)
     url = f"https://api.chess.com/pub/player/{username}/games/{year}/{month}"
-    return make_api_request(url)["games"]
+    result = make_api_request(url)
+    if result is None:
+        return None
+    return result["games"]
 
 def get_player_start_date(username):
     date = tuple(make_api_request(f"https://api.chess.com/pub/player/{username}/games/archives")["archives"][0].split("/")[-2:])
