@@ -19,7 +19,9 @@ class PathFinder:
         self.start_date = start_date
         self.game_filter = game_filter
         self.all_nodes: dict[str, PlayerNode] = {}
-        self.jump = jump
+        self.threshold = jump[0]
+        self.jump_above = jump[1]
+        self.jump_below = jump[2]
         self.dest_set = set()
 
     def init_ratings(self):
@@ -142,17 +144,14 @@ class PathFinder:
     def calculate_heuristic(self, node):
         
         goal_rating = self.dest_node.comp_rating
-        jump_below=230
-        jump_above=550
-        threshold=2000
 
         if node.comp_rating == goal_rating:
             return 0
 
         if node.comp_rating < goal_rating:
-            return (min(threshold, goal_rating) - node.comp_rating) / jump_below + max(0, goal_rating - threshold) / jump_above
+            return (min(self.threshold, goal_rating) - node.comp_rating) / self.jump_below + max(0, goal_rating - self.threshold) / self.jump_above
 
-        return (node.comp_rating - max(threshold, goal_rating)) / jump_above + max(0, threshold - goal_rating) / jump_below
+        return (node.comp_rating - max(self.threshold, goal_rating)) / self.jump_above + max(0, self.threshold - goal_rating) / self.jump_below
 
     def consolodate_path(self, far_node, close_node = None, game = None):
 

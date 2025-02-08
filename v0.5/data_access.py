@@ -11,16 +11,41 @@ class DataAccess:
         self.check_frequency = 24 # hours
         self.request_counter = 0
 
+    def update_games(self, username):
+        print(f"adding recent games for {username}")
+        original_records_date = self.get_records_date(username)
+        self.set_records_date(username, (None, None))
+        last_update = self.get_update_date(username)
+        date =last_update.split("-")[:2]
+        self.prep_games_since_date(username, tuple(int(x) for x in date))
+        self.set_records_date(username, original_records_date)
+        
+        self.reset_updated(username)
+
     def prepare_player_data(self, username):
         if self.player_update_needed(username):
             self.renew_closed_status_api(username)
-
+            self.update_games(username)
+            
     def get_matching_games(self, *, username, start_date, is_winning=None, filter=None, loser=None):
+        self.prepare_player_data(username)
         self.prep_games_since_date(username, start_date)
         tups =  self.pull_games(username=username, start_date=start_date, is_winning=is_winning, filter=filter, loser_username=loser)
         return [tup_to_game(tup) for tup in tups]
             
     ###################################### SQL stuff ###################################
+
+    def get_update_date(self, username):
+        c = self.conn.cursor()
+        c.execute("""
+        SELECT updated FROM players WHERE username = ? LIMIT 1
+        """, (username,))
+        return c.fetchone()[0]
+
+    def set_records_date(self, username, date):
+        c = self.conn.cursor()
+        c.execute("""UPDATE players SET records_year = ?, records_month = ? WHERE username = ?""", (date[0], date[1], username))
+        self.conn.commit()
 
     def is_player_closed(self, username):
         c = self.conn.cursor()
@@ -85,10 +110,9 @@ class DataAccess:
         result = c.fetchone()
         return tuple(result)
 
-
     def reset_updated(self, username):
         c = self.conn.cursor()
-        c.execute("UPDATE players SET updated = CURRENT_TIMESTAMP WHERE username = ? LIMIT 1", (username,))
+        c.execute("UPDATE players SET updated = CURRENT_TIMESTAMP WHERE username = ?", (username,))
         self.conn.commit()
 
     def player_update_needed(self, username):
@@ -238,7 +262,7 @@ class DataAccess:
     def prep_games_since_date(self, username, start_date):
         self.request_counter += 1
         games = []
-        self.prepare_player_data(username)
+        
         user_id = self.get_player_id(username)
         records_date = self.get_records_date(username)
         first_date = self.get_first_date(username)
