@@ -1,18 +1,18 @@
 import sqlite3
-import api_requests
-from format_conversion import game_json_to_tup, tup_to_game
+from path_finding import api_requests
+from path_finding.format_conversion import game_json_to_tup, tup_to_game
 from datetime import datetime, timedelta, timezone
 import pytz
 
 class DataAccess:
-    def __init__(self):
-        self.conn = sqlite3.connect("data.db")
+    def __init__(self, database_filepath):
+        self.conn = sqlite3.connect(database_filepath)
         self.set_up_database()
         self.check_frequency = 24 # hours
         self.request_counter = 0
 
     def update_games(self, username):
-        print(f"adding recent games for {username}")
+        # print(f"adding recent games for {username}")
         original_records_date = self.get_records_date(username)
         self.set_records_date(username, (None, None))
         last_update = self.get_update_date(username)

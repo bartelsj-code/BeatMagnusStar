@@ -3,9 +3,10 @@ from control_variables import *
 import webbrowser
 import time
 
-jump = (CUTOFF, JUMP_ABOVE, JUMP_BELOW)
+
 date = (START_YEAR, START_MONTH)
-g = PathFinder(USER, DESTINATION, date, GAME_ATTRIBUTES, jump)
+filtering_conditions = GAME_ATTRIBUTES
+g = PathFinder(USER, DESTINATION, date, filtering_conditions)
 player_usernames, game_urls = g.find_path(EXPLORATION_LIMIT)
 
 print(player_usernames)

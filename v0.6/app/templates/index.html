@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enter Your Username</title>
+</head>
+<body>
+    <h1>Enter Your Username and Goal Username</h1>
+    <form action="/find_path" method="POST">
+        <label for="username">Your Username:</label>
+        <input type="text" id="username" name="username" required><br><br>
+        
+        <label for="goal">Goal Username (Default: Magnus Carlsen):</label>
+        <input type="text" id="goal" name="goal" value="magnuscarlsen"><br><br>
+        
+        <button type="submit">Find Path</button>
+    </form>
+</body>
+</html>

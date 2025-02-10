@@ -5,12 +5,13 @@ import time, webbrowser
 import os
 from math import floor
 from data_access import DataAccess
+from control_variables import CUTOFF, JUMP_ABOVE, JUMP_BELOW
 
 class PathFinder:
     user_username: str
     dest_username: str
     start_date: tuple[str, str]
-    def __init__(self, user_username, dest_username, start_date, game_filter, jump) -> None:
+    def __init__(self, user_username, dest_username, start_date, game_filter) -> None:
         self.db = DataAccess()
         self.user_username = user_username
         self.dest_username = dest_username
@@ -19,9 +20,9 @@ class PathFinder:
         self.start_date = start_date
         self.game_filter = game_filter
         self.all_nodes: dict[str, PlayerNode] = {}
-        self.threshold = jump[0]
-        self.jump_above = jump[1]
-        self.jump_below = jump[2]
+        self.threshold = CUTOFF
+        self.jump_above = JUMP_ABOVE
+        self.jump_below = JUMP_BELOW
         self.dest_set = set()
 
     def init_ratings(self):
@@ -93,7 +94,7 @@ class PathFinder:
         depth = 1
         visited = set()
         completed_set = set([node])
-        while not skipping and depth < 7:
+        while not skipping and depth < 4:
             print(f"searching depth: {depth}")
             set_being_built = set([])
             for element in completed_set:

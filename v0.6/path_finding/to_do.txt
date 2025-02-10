@@ -1,0 +1,5 @@
+dynamic heuristic
+maybe change url to just being the identifier to save space
+
+Handle API requests (hand off to users?) and Database Accessing (updating only needs to happen once, and commits need to be handled Ideally all requests (from different users) will be sent into a queue)
+(maybe ask someone who knows what is up here, but who>)
